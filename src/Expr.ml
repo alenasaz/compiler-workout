@@ -50,5 +50,29 @@ let _ =
    Takes a state and an expression, and returns the value of the expression in 
    the given state.
 *)
-let eval = failwith "Not implemented yet"
+
+let from_bool_to_int b = if b then 1 else 0;
+
+let from_int_to_bool i = i!= 0
+
+let get_oper op l_e r_e = match op with
+      |"+" -> l_e + r_e
+      |"-" -> l_e - r_e
+      |"*" -> l_e * r_e
+      |"/" -> l_e / r_e
+      |"%" -> l_e mod r_e
+      |">" -> from_bool_to_int (l_e>r_e)
+      |"<" -> from_bool_to_int (l_e<r_e)
+      |">=" -> from_bool_to_int (l_e>=r_e)
+      |"<=" -> from_bool_to_int (l_e<=r_e)
+      |"==" -> from_bool_to_int (l_e==r_e)
+      |"!=" -> from_bool_to_int (l_e!=r_e)
+      |"!!" -> from_int_to_bool(from_bool_to_int l_e || r_e)
+      |"&&" -> from_int_to_bool(from_bool_to_int l_e && r_e)
+
+
+let rec eval state  expres = match expr with
+    |Const con -> c 
+    |Var var -> state var
+    |Binop (op,l_e,r_e) -> get_oper(eval state ex1) (eval state ex2)
                     
