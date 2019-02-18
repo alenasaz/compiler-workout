@@ -35,14 +35,14 @@ let update x v s = fun y -> if x = y then v else s y
 (* An example of a non-trivial state: *)                                                   
 let s = update "x" 1 @@ update "y" 2 @@ update "z" 3 @@ update "t" 4 empty
 
-(* Some testing; comment this definition out when submitting the solution. *)
+(* Some testing; comment this definition out when submitting the solution. 
 let _ =
   List.iter
     (fun x ->
        try  Printf.printf "%s=%d\n" x @@ s x
        with Failure s -> Printf.printf "%s\n" s
     ) ["x"; "a"; "y"; "z"; "t"; "b"]
-
+*)
 (* Expression evaluator
 
      val eval : state -> expr -> int
@@ -51,28 +51,28 @@ let _ =
    the given state.
 *)
 
-let from_bool_to_int b = if b then 1 else 0;
+let from_bool_to_int b = if b then 1 else 0
 
 let from_int_to_bool i = i!= 0
 
 let get_oper op l_e r_e = match op with
-      |"+" -> l_e + r_e
-      |"-" -> l_e - r_e
-      |"*" -> l_e * r_e
-      |"/" -> l_e / r_e
-      |"%" -> l_e mod r_e
-      |">" -> from_bool_to_int (l_e>r_e)
-      |"<" -> from_bool_to_int (l_e<r_e)
-      |">=" -> from_bool_to_int (l_e>=r_e)
-      |"<=" -> from_bool_to_int (l_e<=r_e)
-      |"==" -> from_bool_to_int (l_e==r_e)
-      |"!=" -> from_bool_to_int (l_e!=r_e)
-      |"!!" -> from_int_to_bool(from_bool_to_int l_e || r_e)
-      |"&&" -> from_int_to_bool(from_bool_to_int l_e && r_e)
+    |"+" -> l_e + r_e
+    |"-" -> l_e - r_e
+    |"*" -> l_e * r_e
+    |"/" -> l_e / r_e
+    |"%" -> l_e mod r_e
+    |">" -> from_bool_to_int (l_e > r_e)
+    |"<" -> from_bool_to_int (l_e < r_e)
+    |">=" -> from_bool_to_int (l_e >= r_e)
+    |"<=" -> from_bool_to_int (l_e <= r_e)
+    |"==" -> from_bool_to_int (l_e == r_e)
+    |"!=" -> from_bool_to_int (l_e != r_e)
+    |"!!" -> from_int_to_bool(from_bool_to_int l_e || r_e)
+    |"&&" -> from_int_to_bool(from_bool_to_int l_e && r_e)
 
 
-let rec eval state  expres = match expr with
-    |Const con -> c 
-    |Var var -> state var
-    |Binop (op,l_e,r_e) -> get_oper(eval state ex1) (eval state ex2)
+let rec eval state expres = match expres with
+    |Const c -> c 
+    |Var v -> state v
+    |Binop (op,l_e,r_e) -> get_oper(eval state l_e) (eval state r_e)
                     
