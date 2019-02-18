@@ -67,9 +67,8 @@ let get_oper op l_e r_e = match op with
     |"<=" -> from_bool_to_int (l_e <= r_e)
     |"==" -> from_bool_to_int (l_e == r_e)
     |"!=" -> from_bool_to_int (l_e != r_e)
-    |"!!" -> from_int_to_bool(from_bool_to_int l_e || r_e)
-    |"&&" -> from_int_to_bool(from_bool_to_int l_e && r_e)
-
+    |"!!" -> from_int_to_bool(from_bool_to_int l_e || from_bool_to_int r_e)
+    |"&&" -> from_int_to_bool(from_bool_to_int l_e && from_bool_to_int r_e)
 
 let rec eval state expres = match expres with
     |Const c -> c 
