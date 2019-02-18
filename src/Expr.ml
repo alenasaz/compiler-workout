@@ -67,11 +67,11 @@ let get_oper op l_e r_e = match op with
     |"<=" -> from_bool_to_int (l_e <= r_e)
     |"==" -> from_bool_to_int (l_e == r_e)
     |"!=" -> from_bool_to_int (l_e != r_e)
-    |"!!" -> from_int_to_bool(from_bool_to_int l_e || from_bool_to_int r_e)
-    |"&&" -> from_int_to_bool(from_bool_to_int l_e && from_bool_to_int r_e)
+    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
+    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
 
-let rec eval state expres = match expres with
+let rec eval state_ expres_ = match expres_ with
     |Const c -> c 
-    |Var v -> state v
-    |Binop (op,l_e,r_e) -> get_oper op (eval state l_e) (eval state r_e)
+    |Var v -> state_ v
+    |Binop (op,l_e,r_e) -> get_oper op (eval state_ l_e) (eval state_ r_e)
                     
