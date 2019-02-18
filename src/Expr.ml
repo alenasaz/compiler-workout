@@ -73,5 +73,5 @@ let get_oper op l_e r_e = match op with
 let rec eval state expres = match expres with
     |Const c -> c 
     |Var v -> state v
-    |Binop (op,l_e,r_e) -> get_oper(eval state l_e) (eval state r_e)
+    |Binop (op,l_e,r_e) -> get_oper op (eval state l_e) (eval state r_e)
                     
