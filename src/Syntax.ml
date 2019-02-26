@@ -43,7 +43,29 @@ module Expr =
     *)
     let eval _ = failwith "Not implemented yet"
 
-  end
+  endlet from_bool_to_int b = if b then 1 else 0
+
+let from_int_to_bool i = i!= 0
+
+let get_oper op l_e r_e = match op with
+    |"+" -> l_e + r_e
+    |"-" -> l_e - r_e
+    |"*" -> l_e * r_e
+    |"/" -> l_e / r_e
+    |"%" -> l_e mod r_e
+    |">" -> from_bool_to_int (l_e > r_e)
+    |"<" -> from_bool_to_int (l_e < r_e)
+    |">=" -> from_bool_to_int (l_e >= r_e)
+    |"<=" -> from_bool_to_int (l_e <= r_e)
+    |"==" -> from_bool_to_int (l_e == r_e)
+    |"!=" -> from_bool_to_int (l_e != r_e)
+    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
+    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
+
+let rec eval state_ expres_ = match expres_ with
+    |Const c -> c 
+    |Var v -> state_ v
+    |Binop (op,l_e,r_e) -> get_oper op (eval state_ l_e) (eval state_ r_e)
                     
 (* Simple statements: syntax and sematics *)
 module Stmt =
@@ -65,8 +87,14 @@ module Stmt =
 
        Takes a configuration and a statement, and returns another configuration
     *)
-    let eval _ = failwith "Not implemented yet"
-                                                         
+    let rec eval config statement = 
+    let (state, i, o ) = config in match statement with
+          |Read var -> (match i with
+			          | head::tail -> (Expr.update var head state, tail, o)) 
+          |Write expression ->  (state, i, o @ [Expr.eval state expression])   
+          |Assign (var, expression)-> (Expr.update var (Expr.eval state expression) state, i, o)    
+          |Seq (statement1, statement2) -> eval (eval config statement1) statement2                                        
+  
   end
 
 (* The top-level definitions *)
