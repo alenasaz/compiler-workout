@@ -28,7 +28,7 @@ let eval_i config insn=
         let (state, i, o) = s_config in
         match insn with
          |BINOP operator -> (match stack with
-                |y::x::tail -> ([(Syntax.Expr.get_oper operator) x y]@tail, s_config)
+                |y::x::tail -> ([(Syntax.Expr.get_oper op) x y]@tail, s_config)
          |CONST value -> ([value]@stack, s_config)
          |READ - > (match i with 
                   |head::tail->([head]@stack, (state, tail, o)))
@@ -57,8 +57,8 @@ let run i p = let (_, (_, _, o)) = eval ([], (Syntax.Expr.empty, i, [])) p in o
  *)
 
 let rec compile_expr e = match e with
-    | Syntax.Expr.Const x -> [CONST x]
-    | Syntax.Expr.Var n -> [LD n]
+    | Syntax.Expr.Const c -> [CONST c]
+    | Syntax.Expr.Var v -> [LD v]
     | Syntax.Expr.Binop (op, l_e,r_e) -> (compile_expr l_e)@(compile_expr r_e)@ [BINOP op];;
 
 let rec compile p = match p with
