@@ -41,9 +41,9 @@ module Expr =
        Takes a state and an expression, and returns the value of the expression in 
        the given state.
     *)
-    let from_bool_to_int b = if b then 1 else 0
+    let from_bool_to_int (b: bool): int = if b then 1 else 0
 
-    let from_int_to_bool i = i!= 0
+    let from_int_to_bool (i: int): bool = i!= 0
 
     let get_oper op l_e r_e = match op with
 	    |"+" -> l_e + r_e
@@ -57,8 +57,8 @@ module Expr =
 	    |"<=" -> from_bool_to_int (l_e <= r_e)
 	    |"==" -> from_bool_to_int (l_e == r_e)
 	    |"!=" -> from_bool_to_int (l_e != r_e)
-	    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
-	    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
+	    |"!!" -> from_bool_to_int((from_int_to_bool l_e) || (from_int_to_bool r_e))
+	    |"&&" -> from_bool_to_int((from_int_to_bool l_e) && (from_int_to_bool r_e))
 
     let rec eval state_ expres = match expres with
 	    |Const c -> c 
@@ -91,9 +91,9 @@ module Stmt =
 	let (state, input, output) = config in
 	match statement with
 		| Read variable_name -> (match input with
-			| head::tail -> (Expr.update variable_name head state, tail, output))
+			| head::tail -> (Expr.update variable_name head state), tail, output)
 		| Write expression -> (state, input, output @ [Expr.eval state expression])
-		| Assign (variable_name, expression) -> (Expr.update variable_name (Expr.eval state expression) state, input, output)
+		| Assign (variable_name, expression) -> (Expr.update variable_name (Expr.eval state expression) state), input, output
 		| Seq (e1, e2) -> eval (eval config e1) e2;;                                      
   
   end
