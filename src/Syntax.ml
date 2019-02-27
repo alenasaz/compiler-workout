@@ -88,12 +88,13 @@ module Stmt =
        Takes a configuration and a statement, and returns another configuration
     *)
     let rec eval config statement = 
-    let (state, i, o ) = config in match statement with
-          |Read var -> (match i with
-			     | head::tail -> (Expr.update var head state, tail, o)) 
-          |Write expr ->  (state, i, o @ [Expr.eval state expr])   
-          |Assign (var, expr)-> (Expr.update var (Expr.eval state expr) state, i, o)    
-          |Seq (statement1, statement2) -> eval (eval config statement1) statement2                                        
+	let (state, input, output) = config in
+	match statement with
+		| Read variable_name -> (match input with
+			| head::tail -> (Expr.update variable_name head state, tail, output))
+		| Write expression -> (state, input, output @ [Expr.eval state expression])
+		| Assign (variable_name, expression) -> (Expr.update variable_name (Expr.eval state expression) state, input, output)
+		| Seq (e1, e2) -> eval (eval config e1) e2;;                                      
   
   end
 
