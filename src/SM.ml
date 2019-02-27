@@ -23,23 +23,23 @@ type config = int list * Syntax.Stmt.config
 
    Takes a configuration and a program, and returns a configuration as a result
  *)                         
-let eval_i config insn= 
-        let (stack, s_config) = config in 
-        let (state, i, o) = s_config in
-        match insn with
-         |BINOP operator -> (match stack with
-                |y::x::tail -> ([(Syntax.Expr.get_oper op) x y]@tail, s_config)
-         |CONST value -> ([value]@stack, s_config)
-         |READ - > (match i with 
-                  |head::tail->([head]@stack, (state, tail, o)))
-         |WRITE -> (match stack with
-                  |head::tail -> (tail (state, i, o@[head])))
-         |LD var ->([state var]@stack, s_config)
-         |ST var ->(match stack with 
-                |head::tail -> (tail,(Syntax.Expr.update var head stack, i, o)))
+let eval_insn config insn = 
+	let (stack, stmt_config) = config in
+	let (state, input, output) = stmt_config in
+	match insn with
+	| BINOP operator -> (match stack with
+		| y::x::tail -> ([(Syntax.Expr.get_oper op) x y]@tail, stmt_config))
+    | CONST value -> ([value]@stack, stmt_config)                 
+	| READ -> (match input with
+		| head::tail -> ([head]@stack, (state, tail, output)))
+	| WRITE -> (match stack with
+		| head::tail -> (tail, (state, input, output@[head])))
+	| LD  variable_name -> ([state variable_name]@stack, stmt_config)
+	| ST  variable_name -> (match stack with
+		| head::tail -> (tail, (Syntax.Expr.update variable_name head state, input, output)))
 
 
-let eval config prg = List.fold_left eval_i config prg
+let eval config prg = List.fold_left eval_insn config prg
 (* Top-level evaluation
 
      val run : int list -> prg -> int list
@@ -62,7 +62,7 @@ let rec compile_expr e = match e with
     | Syntax.Expr.Binop (op, l_e,r_e) -> (compile_expr l_e)@(compile_expr r_e)@ [BINOP op];;
 
 let rec compile p = match p with
-    | Syntax.Stmt.Read var -> [READ; ST var]
-    | Syntax.Stmt.Write expr -> (compile_expr expr)@ [WRITE]
-    | Syntax.Stmt.Assign (var, expr) -> (compile_expr expr)@ [ST var]
+    | Syntax.Stmt.Read variable_name -> [READ; ST variable_name]
+    | Syntax.Stmt.Write expression  -> (compile_expr expression )@ [WRITE]
+    | Syntax.Stmt.Assign (variable_name, expression) -> (compile_expr expression)@ [ST variable_name]
     | Syntax.Stmt.Seq (e1, e2) -> (compile e1)@(compile e2);;
