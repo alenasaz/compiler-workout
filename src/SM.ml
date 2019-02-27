@@ -27,16 +27,16 @@ let eval_insn config insn =
 	let (stack, stmt_config) = config in
 	let (state, input, output) = stmt_config in
 	match insn with
-	| BINOP operator -> (match stack with
-		| y::x::tail -> ([(Syntax.Expr.get_oper op) x y]@tail, stmt_config))
-    | CONST value -> ([value]@stack, stmt_config)                 
+	| BINOP op -> (match stack with
+		| y::x::tail -> [Syntax.Expr.get_oper op x y]@tail, stmt_config)
+    | CONST value -> [value]@stack, stmt_config               
 	| READ -> (match input with
-		| head::tail -> ([head]@stack, (state, tail, output)))
+		| head::tail -> [head]@stack, (state, tail, output))
 	| WRITE -> (match stack with
-		| head::tail -> (tail, (state, input, output@[head])))
-	| LD  variable_name -> ([state variable_name]@stack, stmt_config)
+		| head::tail -> tail, (state, input, output@[head])
+	| LD  variable_name -> [state variable_name]@stack, stmt_config
 	| ST  variable_name -> (match stack with
-		| head::tail -> (tail, (Syntax.Expr.update variable_name head state, input, output)))
+		| head::tail -> tail, (Syntax.Expr.update variable_name head state, input, output))
 
 
 let eval config prg = List.fold_left eval_insn config prg
@@ -56,12 +56,12 @@ let run i p = let (_, (_, _, o)) = eval ([], (Syntax.Expr.empty, i, [])) p in o
    stack machine
  *)
 
-let rec compile_expr e = match e with
+let rec compile_expr (e: Syntax.Expr.t) = match e with
     | Syntax.Expr.Const c -> [CONST c]
     | Syntax.Expr.Var v -> [LD v]
     | Syntax.Expr.Binop (op, l_e,r_e) -> (compile_expr l_e)@(compile_expr r_e)@ [BINOP op];;
 
-let rec compile p = match p with
+let rec compile (p: Syntax.Stmt.t) = match p with
     | Syntax.Stmt.Read variable_name -> [READ; ST variable_name]
     | Syntax.Stmt.Write expression  -> (compile_expr expression )@ [WRITE]
     | Syntax.Stmt.Assign (variable_name, expression) -> (compile_expr expression)@ [ST variable_name]
