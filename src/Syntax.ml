@@ -41,32 +41,32 @@ module Expr =
        Takes a state and an expression, and returns the value of the expression in 
        the given state.
     *)
-    let eval _ = failwith "Not implemented yet"
+    let from_bool_to_int b = if b then 1 else 0
 
-  endlet from_bool_to_int b = if b then 1 else 0
+    let from_int_to_bool i = i!= 0
 
-let from_int_to_bool i = i!= 0
+    let get_oper op l_e r_e = match op with
+	    |"+" -> l_e + r_e
+	    |"-" -> l_e - r_e
+	    |"*" -> l_e * r_e
+	    |"/" -> l_e / r_e
+	    |"%" -> l_e mod r_e
+	    |">" -> from_bool_to_int (l_e > r_e)
+	    |"<" -> from_bool_to_int (l_e < r_e)
+	    |">=" -> from_bool_to_int (l_e >= r_e)
+	    |"<=" -> from_bool_to_int (l_e <= r_e)
+	    |"==" -> from_bool_to_int (l_e == r_e)
+	    |"!=" -> from_bool_to_int (l_e != r_e)
+	    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
+	    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
 
-let get_oper op l_e r_e = match op with
-    |"+" -> l_e + r_e
-    |"-" -> l_e - r_e
-    |"*" -> l_e * r_e
-    |"/" -> l_e / r_e
-    |"%" -> l_e mod r_e
-    |">" -> from_bool_to_int (l_e > r_e)
-    |"<" -> from_bool_to_int (l_e < r_e)
-    |">=" -> from_bool_to_int (l_e >= r_e)
-    |"<=" -> from_bool_to_int (l_e <= r_e)
-    |"==" -> from_bool_to_int (l_e == r_e)
-    |"!=" -> from_bool_to_int (l_e != r_e)
-    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
-    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
-
-let rec eval state_ expres_ = match expres_ with
-    |Const c -> c 
-    |Var v -> state_ v
-    |Binop (op,l_e,r_e) -> get_oper op (eval state_ l_e) (eval state_ r_e)
-                    
+    let rec eval state_ expres = match expres with
+	    |Const c -> c 
+	    |Var v -> state_ v
+	    |Binop (op,l_e,r_e) -> get_oper op (eval state_ l_e) (eval state_ r_e)
+  end
+ 
+ 
 (* Simple statements: syntax and sematics *)
 module Stmt =
   struct
