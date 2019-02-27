@@ -90,9 +90,9 @@ module Stmt =
     let rec eval config statement = 
     let (state, i, o ) = config in match statement with
           |Read var -> (match i with
-			          | head::tail -> (Expr.update var head state, tail, o)) 
-          |Write expression ->  (state, i, o @ [Expr.eval state expression])   
-          |Assign (var, expression)-> (Expr.update var (Expr.eval state expression) state, i, o)    
+			     | head::tail -> (Expr.update var head state, tail, o)) 
+          |Write expr ->  (state, i, o @ [Expr.eval state expr])   
+          |Assign (var, expr)-> (Expr.update var (Expr.eval state expr) state, i, o)    
           |Seq (statement1, statement2) -> eval (eval config statement1) statement2                                        
   
   end
