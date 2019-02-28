@@ -41,9 +41,9 @@ module Expr =
        Takes a state and an expression, and returns the value of the expression in 
        the given state.
     *)
-    let from_bool_to_int (b: bool): int = if b then 1 else 0
+    let from_bool_to_int b = if b then 1 else 0
 
-    let from_int_to_bool (i: int): bool = i!= 0
+    let from_int_to_bool i= i!= 0
 
     let get_oper op l_e r_e = match op with
 	    |"+" -> l_e + r_e
@@ -57,13 +57,13 @@ module Expr =
 	    |"<=" -> from_bool_to_int (l_e <= r_e)
 	    |"==" -> from_bool_to_int (l_e == r_e)
 	    |"!=" -> from_bool_to_int (l_e != r_e)
-	    |"!!" -> from_bool_to_int((from_int_to_bool l_e) || (from_int_to_bool r_e))
-	    |"&&" -> from_bool_to_int((from_int_to_bool l_e) && (from_int_to_bool r_e))
+	    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
+	    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
 
-    let rec eval state_ expres = match expres with
+    let rec eval s expres = match expres with
 	    |Const c -> c 
-	    |Var v -> state_ v
-	    |Binop (op,l_e,r_e) -> get_oper op (eval state_ l_e) (eval state_ r_e)
+	    |Var v -> s v
+	    |Binop (op,l_e,r_e) -> get_oper op (eval s l_e) (eval s r_e)
   end
  
  
@@ -87,14 +87,11 @@ module Stmt =
 
        Takes a configuration and a statement, and returns another configuration
     *)
-    let rec eval config statement = 
-	let (state, input, output) = config in
-	match statement with
-		| Read variable_name -> (match input with
-			| head::tail -> (Expr.update variable_name head state), tail, output)
-		| Write expression -> (state, input, output @ [Expr.eval state expression])
-		| Assign (variable_name, expression) -> (Expr.update variable_name (Expr.eval state expression) state), input, output
-		| Seq (e1, e2) -> eval (eval config e1) e2;;                                      
+    let rec eval (s, i, o) p = match p with
+    | Read variable_name  -> (Expr.update variable_name  (hd i) s, tl i, o)
+    | Write expression   -> (s, i, o @ [Expr.eval s expression])
+    | Assign (variable_name, expression  ) -> (Expr.update variable_name (Expr.eval s expression ) s, i, o)
+    | Seq (e1, e2)  -> eval (eval (s, i, o) e1) e2                                    
   
   end
 
