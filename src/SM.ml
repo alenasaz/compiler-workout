@@ -23,23 +23,19 @@ type config = int list * Syntax.Stmt.config
 
    Takes a configuration and a program, and returns a configuration as a result
  *)                         
-let eval_insn config insn = 
-	let (stack, stmt_config) = config in
-	let (state, input, output) = stmt_config in
-	match insn with
-	| BINOP op -> (match stack with
-		| y::x::tail -> [Syntax.Expr.get_oper op x y]@tail, stmt_config)
-    | CONST value -> [value]@stack, stmt_config               
-	| READ -> (match input with
-		| head::tail -> [head]@stack, (state, tail, output))
-	| WRITE -> (match stack with
-		| head::tail -> tail, (state, input, output@[head])
-	| LD  variable_name -> [state variable_name]@stack, stmt_config
-	| ST  variable_name -> (match stack with
-		| head::tail -> tail, (Syntax.Expr.update variable_name head state, input, output))
+ let rec eval cfg prg =
+  let step (st, (s, i, o)) p = match p with
+    | BINOP op -> (Syntax.Expr.get_oper op (hd (tl st)) (hd st) :: (tl (tl st)), (s, i, o))
+    | CONST n  -> (n :: st, (s, i, o))
+    | READ     -> (hd i :: st, (s, tl i, o))
+    | WRITE    -> (tl st, (s, i, o @ [hd st]))
+    | LD variable_name    -> (s variable_name :: st, (s, i, o))
+    | ST variable_name    -> (tl st, (Syntax.Expr.update variable_name (hd st) s, i, o))
+  in match prg with
+    | [] -> cfg
+    | p :: ps -> eval (step cfg p) ps
 
 
-let eval config prg = List.fold_left eval_insn config prg
 (* Top-level evaluation
 
      val run : int list -> prg -> int list
@@ -56,13 +52,13 @@ let run i p = let (_, (_, _, o)) = eval ([], (Syntax.Expr.empty, i, [])) p in o
    stack machine
  *)
 
-let rec compile_expr (e: Syntax.Expr.t) = match e with
-    | Syntax.Expr.Const c -> [CONST c]
+let rec compile_expr e = match e with
+    | Syntax.Expr.Const n -> [CONST n]
     | Syntax.Expr.Var v -> [LD v]
-    | Syntax.Expr.Binop (op, l_e,r_e) -> (compile_expr l_e)@(compile_expr r_e)@ [BINOP op];;
+    | Syntax.Expr.Binop (op, l_e,r_e) -> compile_expr l_e@ compile_expr r_e@ [BINOP op]
 
-let rec compile (p: Syntax.Stmt.t) = match p with
+let rec compile p = match p with
     | Syntax.Stmt.Read variable_name -> [READ; ST variable_name]
-    | Syntax.Stmt.Write expression  -> (compile_expr expression )@ [WRITE]
-    | Syntax.Stmt.Assign (variable_name, expression) -> (compile_expr expression)@ [ST variable_name]
-    | Syntax.Stmt.Seq (e1, e2) -> (compile e1)@(compile e2);;
+    | Syntax.Stmt.Write expression  -> compile_expr expression @ [WRITE]
+    | Syntax.Stmt.Assign (variable_name, expression) -> compile_expr expression@ [ST variable_name]
+    | Syntax.Stmt.Seq (e1, e2) -> compile e1@compile e2;;
