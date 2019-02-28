@@ -1,5 +1,6 @@
-open GT       
-       
+open GT 
+
+open List    
 (* The type for the stack machine instructions *)
 @type insn =
 (* binary operator                 *) | BINOP of string
@@ -61,4 +62,4 @@ let rec compile p = match p with
     | Syntax.Stmt.Read variable_name -> [READ; ST variable_name]
     | Syntax.Stmt.Write expression  -> compile_expr expression @ [WRITE]
     | Syntax.Stmt.Assign (variable_name, expression) -> compile_expr expression@ [ST variable_name]
-    | Syntax.Stmt.Seq (e1, e2) -> compile e1@compile e2;;
+    | Syntax.Stmt.Seq (e1, e2) -> compile e1 @ compile e2;;
