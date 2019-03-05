@@ -74,16 +74,19 @@ module Expr =
          DECIMAL --- a decimal constant [0-9]+ as a string
    
     *)
+    let do_Bin op =  ostap(- $(op)), (fun x y -> Binop (op, x, y))
+    
     ostap (
-      expr:
+                  expr:
 			!(Ostap.Util.expr
 				(fun x -> x)
+				(Array.map (fun (a, ops) -> a, List.map do_Bin ops)
 				[|
-					`Lefta, [ostap ("!!"), fun x y -> Binop ("!!", x, y)];
-					`Lefta, [ostap ("&&"), fun x y -> Binop ("&&", x, y)];
-					`Nona, [ostap ("<="), (fun x y -> Binop ("<=", x, y)); ostap ("<"), (fun x y -> Binop ("<", x, y)); ostap (">="), (fun x y -> Binop (">=", x, y)); ostap (">"), (fun x y -> Binop (">", x, y)); ostap ("=="), (fun x y -> Binop ("==", x, y)); ostap ("!="), (fun x y -> Binop ("!=", x, y))];
-					`Lefta, [ostap ("+"), (fun x y -> Binop ("+", x, y)); ostap ("-"), (fun x y -> Binop ("-", x, y))];
-					`Lefta, [ostap ("*"), (fun x y -> Binop ("*", x, y)); ostap ("/"), (fun x y -> Binop ("/", x, y)); ostap ("%"), (fun x y -> Binop ("%", x, y))];
+				`Lefta, ["!!"];
+                  		`Lefta, ["&&"];
+                  		`Nona , ["=="; "!="; "<="; ">="; "<"; ">"];
+                  		`Lefta, ["+"; "-"];
+                  		`Lefta, ["*"; "/"; "%"];
 				|]
 				primary
 			);
@@ -116,7 +119,7 @@ module Stmt =
     | Read variable_name  -> (Expr.update variable_name  (hd i) s, tl i, o)
     | Write expression   -> (s, i, o @ [Expr.eval s expression])
     | Assign (variable_name, expression  ) -> (Expr.update variable_name (Expr.eval s expression ) s, i, o)
-    | Seq (e1, e2)  -> eval (eval (s, i, o) e1) e2  
+    | Seq (e1, e2)  -> eval (eval (s, i, o) e1) e2;;  
 
     (* Statement parser *)
     ostap (
