@@ -74,13 +74,13 @@ module Expr =
          DECIMAL --- a decimal constant [0-9]+ as a string
    
     *)
-    let do_Bin op =  ostap(- $(op)), (fun x y -> Binop (op, x, y))
+    let do_Bin oper =  ostap(- $(oper)), (fun x y -> Binop (oper, x, y))
     
     ostap (
-                  expr:
-			!(Ostap.Util.expr
-				(fun x -> x)
-				(Array.map (fun (a, ops) -> a, List.map do_Bin ops)
+          expr:
+		!(Ostap.Util.expr
+			(fun x -> x)
+			(Array.map (fun (a, ops) -> a, List.map do_Bin ops)
 				[|
 				`Lefta, ["!!"];
                   		`Lefta, ["&&"];
@@ -89,9 +89,9 @@ module Expr =
                   		`Lefta, ["*"; "/"; "%"];
 				|]
 			)
-				primary
+			primary
 			);
-		primary: x:IDENT {Var x} | c:DECIMAL {Const c} | -"(" expr -")"
+	primary: x:IDENT {Var x} | c:DECIMAL {Const c} | -"(" expr -")"
     )
 
   end
