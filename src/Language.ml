@@ -88,6 +88,7 @@ module Expr =
                   		`Lefta, ["+"; "-"];
                   		`Lefta, ["*"; "/"; "%"];
 				|]
+			)
 				primary
 			);
 		primary: x:IDENT {Var x} | c:DECIMAL {Const c} | -"(" expr -")"
@@ -115,11 +116,11 @@ module Stmt =
 
        Takes a configuration and a statement, and returns another configuration
     *)
-    let rec eval (s, i, o) p = match p with
-    | Read variable_name  -> (Expr.update variable_name  (hd i) s, tl i, o)
-    | Write expression   -> (s, i, o @ [Expr.eval s expression])
-    | Assign (variable_name, expression  ) -> (Expr.update variable_name (Expr.eval s expression ) s, i, o)
-    | Seq (e1, e2)  -> eval (eval (s, i, o) e1) e2;;  
+    	let rec eval (s, i, o) p = match p with
+    		| Read variable_name  -> (Expr.update variable_name  (hd i) s, tl i, o)
+    		| Write expression   -> (s, i, o @ [Expr.eval s expression])
+    		| Assign (variable_name, expression  ) -> (Expr.update variable_name (Expr.eval s expression ) s, i, o)
+    		| Seq (e1, e2)  -> eval (eval (s, i, o) e1) e2;;  
 
     (* Statement parser *)
     ostap (
