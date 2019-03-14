@@ -2,7 +2,7 @@
    The library provides "@type ..." syntax extension and plugins like show, etc.
 *)
 open GT
-
+open List
 (* Opening a library for combinator-based syntax analysis *)
 open Ostap.Combinators
        
@@ -44,7 +44,29 @@ module Expr =
        Takes a state and an expression, and returns the value of the expression in 
        the given state.
      *)                                                       
-    let eval _ _ = failwith "Not yet implemented"
+    let from_bool_to_int b = if b then 1 else 0
+
+    let from_int_to_bool i= i!= 0
+
+    let get_oper op l_e r_e = match op with
+	    |"+" -> l_e + r_e
+	    |"-" -> l_e - r_e
+	    |"*" -> l_e * r_e
+	    |"/" -> l_e / r_e
+	    |"%" -> l_e mod r_e
+	    |">" -> from_bool_to_int (l_e > r_e)
+	    |"<" -> from_bool_to_int (l_e < r_e)
+	    |">=" -> from_bool_to_int (l_e >= r_e)
+	    |"<=" -> from_bool_to_int (l_e <= r_e)
+	    |"==" -> from_bool_to_int (l_e == r_e)
+	    |"!=" -> from_bool_to_int (l_e != r_e)
+	    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
+	    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
+
+    let rec eval s expres = match expres with
+	    |Const c -> c 
+	    |Var v -> s v
+	    |Binop (op,l_e,r_e) -> get_oper op (eval s l_e) (eval s r_e)
 
     (* Expression parser. You can use the following terminals:
 
@@ -52,10 +74,25 @@ module Expr =
          DECIMAL --- a decimal constant [0-9]+ as a string
                                                                                                                   
     *)
-    ostap (                                      
-      parse: empty {failwith "Not yet implemented"}
-    )
+     let do_Bin oper =  ostap(- $(oper)), (fun x y -> Binop (oper, x, y))
     
+    ostap (
+          expr:
+		!(Ostap.Util.expr
+			(fun x -> x)
+			(Array.map (fun (a, ops) -> a, List.map do_Bin ops)
+				[|
+				`Lefta, ["!!"];
+                  		`Lefta, ["&&"];
+                  		`Nona , ["=="; "!="; "<="; ">="; "<"; ">"];
+                  		`Lefta, ["+"; "-"];
+                  		`Lefta, ["*"; "/"; "%"];
+				|]
+			)
+			primary
+			);
+	primary: x:IDENT {Var x} | c:DECIMAL {Const c} | -"(" expr -")"
+    )
   end
                     
 (* Simple statements: syntax and sematics *)
@@ -78,11 +115,20 @@ module Stmt =
 
        Takes a configuration and a statement, and returns another configuration
     *)
-    let eval _ _ = failwith "Not yet implemented"
+    	let rec eval (s, i, o) p = match p with
+    		| Read variable_name  -> (Expr.update variable_name  (hd i) s, tl i, o)
+    		| Write expression   -> (s, i, o @ [Expr.eval s expression])
+    		| Assign (variable_name, expression  ) -> (Expr.update variable_name (Expr.eval s expression ) s, i, o)
+    		| Seq (e1, e2)  -> eval (eval (s, i, o) e1) e2;; 
 
     (* Statement parser *)
     ostap (
-      parse: empty {failwith "Not yet implemented"}
+      stmt:
+			    x:IDENT ":=" e:!(Expr.expr) {Assign(x, e)}
+			    | "read" "(" x:IDENT ")" {Read x}
+			    | "write" "(" e:!(Expr.expr) ")" {Write e};
+			
+		  parse: s:stmt ";" rest:parse {Seq(s, rest)} | stmt
     )
       
   end
