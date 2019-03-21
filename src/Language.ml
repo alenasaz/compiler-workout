@@ -44,53 +44,53 @@ module Expr =
        Takes a state and an expression, and returns the value of the expression in 
        the given state.
     *)   
-   let from_bool_to_int b = if b then 1 else 0
-
-    let from_int_to_bool i= i!= 0
-
-    let get_oper op l_e r_e = match op with
-	    |"+" -> l_e + r_e
-	    |"-" -> l_e - r_e
-	    |"*" -> l_e * r_e
-	    |"/" -> l_e / r_e
-	    |"%" -> l_e mod r_e
-	    |">" -> from_bool_to_int (l_e > r_e)
-	    |"<" -> from_bool_to_int (l_e < r_e)
-	    |">=" -> from_bool_to_int (l_e >= r_e)
-	    |"<=" -> from_bool_to_int (l_e <= r_e)
-	    |"==" -> from_bool_to_int (l_e == r_e)
-	    |"!=" -> from_bool_to_int (l_e != r_e)
-	    |"!!" -> from_bool_to_int(from_int_to_bool l_e || from_int_to_bool r_e)
-	    |"&&" -> from_bool_to_int(from_int_to_bool l_e && from_int_to_bool r_e)
-
-    let rec eval s expres = match expres with
-	    |Const c -> c 
-	    |Var v -> s v
-	    |Binop (op,l_e,r_e) -> get_oper op (eval s l_e) (eval s r_e)
+   let get_oper op l r =
+      let bool_to_int b = if b then 1 else 0 in
+      match op with
+      | "+"  -> l + r
+      | "-"  -> l - r
+      | "*"  -> l * r
+      | "/"  -> l / r
+      | "%"  -> l mod r
+      | "<"  -> bool_to_int (l < r)
+      | ">"  -> bool_to_int (l > r)
+      | ">=" -> bool_to_int (l >= r)
+      | "<=" -> bool_to_int (l <= r)
+      | "==" -> bool_to_int (l = r)
+      | "!=" -> bool_to_int (l <> r)
+      | "&&" -> bool_to_int (l <> 0 && r <> 0)
+      | "!!" -> bool_to_int (l <> 0 || r <> 0)
+      | _    -> failwith "this operation is not supported"
+  
+     let rec eval s e =  match e with
+      | Var v -> s v
+      | Const c -> c
+      | Binop (op, e1, e2) -> get_oper op (eval s e1) (eval s e2)
+ 
 
     (* Expression parser. You can use the following terminals:
          IDENT   --- a non-empty identifier a-zA-Z[a-zA-Z0-9_]* as a string
          DECIMAL --- a decimal constant [0-9]+ as a string
                                                                                                                   
     *)
-     let do_Bin oper =  ostap(- $(oper)), (fun x y -> Binop (oper, x, y))
-    
+    let create_binop op = fun x y -> Binop(op, x, y)
+    let parse_op_list ops = List.map (fun op -> ostap ($(op)), create_binop op) ops
+
     ostap (
-          expr:
-		!(Ostap.Util.expr
-			(fun x -> x)
-			(Array.map (fun (a, ops) -> a, List.map do_Bin ops)
-				[|
-				`Lefta, ["!!"];
-                  		`Lefta, ["&&"];
-                  		`Nona , ["=="; "!="; "<="; ">="; "<"; ">"];
-                  		`Lefta, ["+"; "-"];
-                  		`Lefta, ["*"; "/"; "%"];
-				|]
-			)
-			primary
-			);
-	primary: x:IDENT {Var x} | c:DECIMAL {Const c} | -"(" expr -")"
+      parse: expr;
+      expr:
+        !(Ostap.Util.expr
+            (fun x -> x)
+            [|
+              `Lefta, parse_op_list ["!!"];
+              `Lefta, parse_op_list ["&&"];
+              `Nona , parse_op_list [">="; ">"; "<="; "<"; "!="; "=="];
+              `Lefta, parse_op_list ["+"; "-"];
+              `Lefta, parse_op_list ["*"; "/"; "%"];
+            |]
+            primary
+          );
+      primary: x:IDENT { Var x } | n:DECIMAL { Const n } | -"(" expr -")"
     )
   end
                     
