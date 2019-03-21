@@ -118,38 +118,36 @@ module Stmt =
 
        Takes a configuration and a statement, and returns another configuration
     *)
-    let rec eval cnf stmt =  
-    let (s, i, o) = cnf in
-      match stmt with                                                  
-    let rec eval (s, i, o) p = match p with
-    		| Read variable_name  -> (Expr.update variable_name  (hd i) s, tl i, o)
-    		| Write expression   -> (s, i, o @ [Expr.eval s expression])
-    		| Assign (variable_name, expression  ) -> (Expr.update variable_name (Expr.eval s expression ) s, i, o)
-    		| Seq (e1, e2)  -> eval (eval (s, i, o) e1) e2;; 
-        | Skip -> cnf
-        | If (expression, e1, e2) -> eval cnf (if Expr.eval s expression != 0 then e1 else e2)
-        | While (expression, stt) ->
-        if Expr.eval s expression != 0 then eval (eval cnf stt) stmt else cnf
-        | RepeatUntil (expression, stt) ->
-        let ((s', _, _) as cnf') = eval cnf stt in
-        if Expr.eval s' expression = 0 then eval cnf' stmt else cnf'
-
-    (* Expression parser. You can use the following terminals:
-
-         IDENT   --- a non-empty identifier a-zA-Z[a-zA-Z0-9_]* as a string
-         DECIMAL --- a decimal constant [0-9]+ as a string
-                                                                                                                  
-    *)
+    let rec eval cnf stmt =
+      let (st, i, o) = cnf in
+      match stmt with
+      | Read x ->
+        begin
+          match i with
+          | z :: tail -> (Expr.update x z st, tail, o)
+          | _ -> failwith "cannot perform Read"
+        end
+      | Write e -> (st, i, o @ [Expr.eval st e])
+      | Assign (x, e) -> (Expr.update x (Expr.eval st e) st, i, o)
+      | Seq (s1, s2) -> eval (eval cnf s1) s2
+      | Skip -> cnf
+      | If (e, s1, s2) -> eval cnf (if Expr.eval st e != 0 then s1 else s2)
+      | While (e, s) ->
+        if Expr.eval st e != 0 then eval (eval cnf s) stmt else cnf
+      | RepeatUntil (e, s) ->
+        let ((st', _, _) as cnf') = eval cnf s in
+        if Expr.eval st' e = 0 then eval cnf' stmt else cnf'
+    (* Statement parser *)
     ostap (
       parse  : seq | stmt;
       stmt   : read | write | assign | skip | if' | while' | for' | repeat;
-      read   : %"read" -"(" variable_name:IDENT -")" { Read variable_name };
-      write  : %"write" -"(" expression:!(Expr.parse) -")" { Write expression };
-      assign : variable_name:IDENT -":=" expression:!(Expr.parse) { Assign (variable_name, expression) };
-      seq    : e1:stmt -";" e2:parse { Seq(e1, e2) };
+      read   : %"read" -"(" x:IDENT -")" { Read x };
+      write  : %"write" -"(" e:!(Expr.parse) -")" { Write e };
+      assign : x:IDENT -":=" e:!(Expr.parse) { Assign (x, e) };
+      seq    : s1:stmt -";" s2:parse { Seq(s1, s2) };
       skip   : %"skip" { Skip };
-      if'    : %"if" expression:!(Expr.parse)
-               %"then" e1:parse
+      if'    : %"if" e:!(Expr.parse)
+               %"then" s1:parse
                  elifs :(%"elif" !(Expr.parse) %"then" parse)*
                  else' :(%"else" parse)? %"fi"
                    {
@@ -157,12 +155,12 @@ module Stmt =
                        | Some t -> t
                        | None -> Skip
                      in
-                     let else''' = List.fold_right (fun (expression', t') t -> If (expression', t', t)) elifs else'' in
-                     If (expression, e1, else''')
+                     let else''' = List.fold_right (fun (e', t') t -> If (e', t', t)) elifs else'' in
+                     If (e, s1, else''')
                    };
-      while' : %"while" expression:!(Expr.parse) %"do" stt:parse %"od" { While (expression, stt) };
-      for'   : %"for" e1:parse "," expression:!(Expr.parse) "," e2:parse %"do" e3:parse %"od" { Seq (e1, While (expression, Seq (e3, e2))) };
-      repeat : %"repeat" stt:parse %"until" expression:!(Expr.parse) { RepeatUntil (expression, stt) }
+      while' : %"while" e:!(Expr.parse) %"do" s:parse %"od" { While (e, s) };
+      for'   : %"for" s1:parse "," e:!(Expr.parse) "," s2:parse %"do" s3:parse %"od" { Seq (s1, While (e, Seq (s3, s2))) };
+      repeat : %"repeat" s:parse %"until" e:!(Expr.parse) { RepeatUntil (e, s) }
     )
       
   end
