@@ -28,7 +28,48 @@ type config = int list * Stmt.config
    Takes an environment, a configuration and a program, and returns a configuration as a result. The
    environment is used to locate a label to jump to (via method env#labeled <label_name>)
 *)                         
-let rec eval env conf prog = failwith "Not yet implemented"
+let rec eval env ((stack, ((state, input, output) as c)) as config) = function
+| [] -> config
+| instruction :: rest_instr ->
+     match instruction with
+     | BINOP op ->
+        begin
+          match stack with
+          | y::x::rest -> (* y::x - because order of arguments on the stack is inverted *)
+             eval env ((Language.Expr.get_oper op x y) :: rest, c) rest_instr
+          | _ -> failwith "SM interpreter error: BINOP"
+        end
+     | CONST v -> eval env (v::stack, c) rest_instr
+     | READ ->
+        begin
+          match input with
+          | x::rest -> eval env (x::stack, (state, rest, output)) rest_instr
+          | _ -> failwith "SM interpreter error: READ"
+        end
+     | WRITE ->
+        begin
+          match stack with
+          | x::rest -> eval env (rest, (state, input, output @ [x])) rest_instr
+          | _ -> failwith "SM interpreter error: WRITE"
+        end
+     | LD x -> eval env ((state x) :: stack, c) rest_instr
+     | ST x ->
+        begin
+          match stack with
+          | z::rest -> eval env (rest, ((Language.Expr.update x z state), input, output)) rest_instr
+          | _ -> failwith "SM interpreter error: ST"
+        end
+     | LABEL l -> eval env config rest_instr
+     | JMP l -> eval env config (env#labeled l)
+     | CJMP (b, l) ->
+        begin
+          match stack with
+          | x::rest ->
+              if (x = 0 && b = "z" || x != 0 && b = "nz")
+              then eval env (rest, c) (env#labeled l)
+              else eval env (rest, c) rest_instr
+          | _ -> failwith "SM interpreter error: stack is empty"
+        end
 
 (* Top-level evaluation
 
@@ -53,4 +94,40 @@ let run p i =
    Takes a program in the source language and returns an equivalent program for the
    stack machine
 *)
-let compile p = failwith "Not yet implemented"
+let rec compile =
+
+  let rec expr = function
+  | Language.Expr.Var   x          -> [LD x]
+  | Language.Expr.Const n          -> [CONST n]
+  | Language.Expr.Binop (op, x, y) -> expr x @ expr y @ [BINOP op]
+  in
+
+  let label_generator =
+    object
+      val mutable counter = 0
+      method generate =
+        counter <- counter + 1;
+        "l_" ^ string_of_int counter
+    end
+  in
+
+  function
+  | Language.Stmt.Seq (s1, s2)   -> compile s1 @ compile s2
+  | Language.Stmt.Read x         -> [READ; ST x]
+  | Language.Stmt.Write e        -> expr e @ [WRITE]
+  | Language.Stmt.Assign (x, e)  -> expr e @ [ST x]
+
+  | Language.Stmt.Skip           -> []
+  | Language.Stmt.If (e, s1, s2) ->
+     let l_else = label_generator#generate in
+     let l_fi = label_generator#generate in
+     (expr e) @ [CJMP ("z", l_else)] @ (compile s1) @ [JMP l_fi] @ [LABEL l_else] @ (compile s2) @ [LABEL l_fi]
+
+  | Language.Stmt.While (e, s) ->
+     let l_expr = label_generator#generate in
+     let l_od = label_generator#generate in
+     [LABEL l_expr] @ (expr e) @ [CJMP ("z", l_od)] @ (compile s) @ [JMP l_expr] @ [LABEL l_od]
+
+  | Language.Stmt.RepeatUntil (e, s) ->
+     let l_repeat = label_generator#generate in
+     [LABEL l_repeat] @ (compile s) @ (expr e) @ [CJMP ("z", l_repeat)]
