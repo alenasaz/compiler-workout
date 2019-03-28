@@ -93,35 +93,47 @@ let run p i =
    Takes a program in the source language and returns an equivalent program for the
    stack machine
 *)
+
 let label_generator =
   object
     val mutable counter = 0
-    method generate =
+    method get =
       counter <- counter + 1;
-      "l_" ^ string_of_int counter
+      "L" ^ string_of_int counter
   end
 
-let rec compile_expr expr =
-  match expr with
-  | Expr.Var x -> [LD x]
-  | Expr.Const c -> [CONST c]
-  | Expr.Binop (op, e1, e2) -> (compile_expr e1) @ (compile_expr e2) @ [BINOP op]
-
-let rec compile stm =
-  match stm with
-  | Stmt.Assign (x, e) -> (compile_expr e) @ [ST x]
-  | Stmt.Read x -> [READ] @ [ST x]
-  | Stmt.Write e -> (compile_expr e) @ [WRITE]
-  | Stmt.Seq (s1, s2) -> (compile s1) @ (compile s2)
-  | Stmt.Skip -> []
+ let rec compileWithLabels p lastL =
+  let rec expr = function
+  | Expr.Var   x          -> [LD x]
+  | Expr.Const n          -> [CONST n]
+  | Expr.Binop (op, x, y) -> expr x @ expr y @ [BINOP op]
+  in match p with
+  | Stmt.Seq (s1, s2)  -> (let newLabel = label_generator#get in
+                           let (compiled1, used1) = compileWithLabels s1 newLabel in
+                           let (compiled2, used2) = compileWithLabels s2 lastL in
+                           (compiled1 @ (if used1 then [LABEL newLabel] else []) @ compiled2), used2)
+  | Stmt.Read x        -> [READ; ST x], false
+  | Stmt.Write e       -> (expr e @ [WRITE]), false
+  | Stmt.Assign (x, e) -> (expr e @ [ST x]), false
   | Stmt.If (e, s1, s2) ->
-     let l_else = label_generator#generate in
-     let l_fi = label_generator#generate in
-     (compile_expr e) @ [CJMP ("z", l_else)] @ (compile s1) @ [JMP l_fi] @ [LABEL l_else] @ (compile s2) @ [LABEL l_fi]
-  | Stmt.While (e, s) ->
-     let l_expr = label_generator#generate in
-     let l_od = label_generator#generate in
-     [LABEL l_expr] @ (compile_expr e) @ [CJMP ("z", l_od)] @ (compile s) @ [JMP l_expr] @ [LABEL l_od]
-  | Stmt.RepeatUntil (e, s) ->
-     let l_repeat = label_generator#generate in
-     [LABEL l_repeat] @ (compile s) @ (compile_expr e) @ [CJMP ("z", l_repeat)]
+    let lElse = label_generator#get in
+    let (compiledS1, used1) = compileWithLabels s1 lastL in
+    let (compiledS2, used2) = compileWithLabels s2 lastL in
+    (expr e @ [CJMP ("z", lElse)]
+    @ compiledS1 @ (if used1 then [] else [JMP lastL]) @ [LABEL lElse]
+    @ compiledS2 @ (if used2 then [] else [JMP lastL])), true
+  | Stmt.While (e, body) ->
+    let lCheck = label_generator#get in
+    let lLoop = label_generator#get in
+    let (doBody, _) = compileWithLabels body lCheck in
+    ([JMP lCheck; LABEL lLoop] @ doBody @ [LABEL lCheck] @ expr e @ [CJMP ("nz", lLoop)]), false
+  | Stmt.RepeatUntil (body, e) ->
+    let lLoop = label_generator#get in
+    let (repeatBody, _) = compileWithLabels body lastL in
+    ([LABEL lLoop] @ repeatBody @ expr e @ [CJMP ("z", lLoop)]), false
+  | Stmt.Skip -> [], false
+
+ let rec compile p =
+  let label = label_generator#get in
+  let compiled, used = compileWithLabels p label in
+  compiled @ (if used then [LABEL label] else []
