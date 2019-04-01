@@ -150,7 +150,7 @@ module Stmt =
 
        which returns a list of formal parameters and a body for given definition
     *)
-     let toBool b = b <> 0
+    let toBool b = b <> 0
     let rec eval env (st, i, o) op =
          match op with
         | Read    v       -> (State.update v (List.hd i) st, List.tl i, o)
@@ -161,7 +161,7 @@ module Stmt =
         | Seq    (e1, e2) -> eval env (eval env (st, i, o) e1) e2
         | Skip            -> (st, i, o)
         | Repeat (e1, e2)  ->
-            let (st, input, output) = eval env (st, i, o) e1 in
+            let (st, i, o) = eval env (st, i, o) e1 in
             let r = Expr.eval st e2 in
             if r != 0 then (st, i, o) else eval env (st, i, o) op
         | Call (name, args) ->
