@@ -86,7 +86,7 @@ open SM
    Take an environment, a stack machine program, and returns a pair --- the updated environment and the list
    of x86 instructions
 *)
-et compile_binop op x y res =
+let compile_binop op x y res =
   let op_to_suf = function
     | ">"  -> "g"
     | ">=" -> "ge"
