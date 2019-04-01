@@ -168,14 +168,14 @@ module Stmt =
         if Expr.eval st e1 != 0 then eval (eval cnf e2) stmt else cnf
       | RepeatUntil (e1, e2) ->
         let ((st', _, _) as cnf') = eval cnf e2 in
-        if Expr.eval st' e = 0 then eval cnf' stmt else cnf'
+        if Expr.eval st' e1 = 0 then eval cnf' stmt else cnf'
       | Call (name, args) ->
-            let (arg_names, locals, body) = env#definition name in
+            let (arg_names, locals, body) = cnf#definition name in
             let args = List.combine arg_names (List.map (Expr.eval st) args) in
             let state = State.push_scope st (arg_names @ locals) in
-            let fun_env_w_args = List.fold_left (fun st (name, value) -> State.update name value st) state args in
-            let (new_s, input, output) = eval env (fun_env_w_args,input, output) body in
-            (State.drop_scope new_s st, input, output)
+            let fun_cnf_w_args = List.fold_left (fun st (name, value) -> State.update name value st) state args in
+            let (new_s, input, output) = eval cnf (fun_cnf_w_args,i, o) body in
+            (State.drop_scope new_s st, i, o)
 
 
     (* Statement parser *)
