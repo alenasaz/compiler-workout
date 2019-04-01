@@ -84,7 +84,7 @@ let run p i =
 let label = object
     val mutable n = 0
     method get s = n <- n + 1; s ^ string_of_int n
-
+end
     
 let label_generator =
   object
