@@ -119,7 +119,7 @@ let label_generator =
     let lLoop = label_generator#get in
     let (doBody, _) = compileWithLabels body lCheck in
     ([JMP lCheck; LABEL lLoop] @ doBody @ [LABEL lCheck] @ expr e @ [CJMP ("nz", lLoop)]), false
-  | Stmt.RepeatUntil (body, e) ->
+  | Stmt.Repeat (body, e) ->
     let lLoop = label_generator#get in
     let (repeatBody, _) = compileWithLabels body lastL in
     ([LABEL lLoop] @ repeatBody @ expr e @ [CJMP ("z", lLoop)]), false
