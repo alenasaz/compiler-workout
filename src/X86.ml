@@ -84,60 +84,56 @@ open SM
    Take an environment, a stack machine program, and returns a pair --- the updated environment and the list
    of x86 instructions
 *)
-let compile_binop op x y res =
-  let op_to_suf = function
-    | ">"  -> "g"
-    | ">=" -> "ge"
-    | "<"  -> "l"
-    | "<=" -> "le"
-    | "==" -> "e"
-    | "!=" -> "ne"
-    | _    -> failwith "not supported" in
-  match op with
-  | "+" | "-" | "*" -> [Mov (y, eax); Binop (op, x, eax); Mov (eax, res)]
-  | "/" -> [Mov (y, eax); Cltd; IDiv x; Mov (eax, res)]
-  | "%" -> [Mov (y, eax); Cltd; IDiv x; Mov (edx, res)]
-  | "&&" | "!!" ->
-     [Mov (L 0, eax); Mov (L 0, edx); Binop ("cmp", L 0, x); Set ("nz", "%al");
-      Binop ("cmp", L 0, y); Set ("nz", "%dl"); Binop (op, eax, edx);  Mov (edx, res)]
-  | "==" | "!=" | "<=" | "<" | ">=" | ">" ->
-     [Mov (y, eax); Binop ("cmp", x, eax); Mov (eax, y);
-      Mov (L 0, eax); Set (op_to_suf op, "%al"); Mov (eax, res)]
-  | _ -> failwith "not supported"
+let cmpOpToAsm op = match op with
+  | "<"  -> "l"
+  | ">=" -> "ge"
+  | "==" -> "e"
+  | "<=" -> "le"
+  | ">"  -> "g"
+  | "!=" -> "ne"
 
-let compile_intruction instr env =
-  match instr with
-  | CONST n ->
-     let s, env = env#allocate in
-     env, [Mov (L n, s)]
-  | WRITE ->
-     let s, env = env#pop in
-     env, [Push s; Call "Lwrite"; Pop eax]
-  | READ ->
-     let s, env = env#allocate in
-     env, [Call "Lread"; Mov(eax, s)]
-  | LD x ->
-     let s, env = (env#global x)#allocate in
-     env, [Mov (M (env#loc x), eax); Mov (eax, s)]
-  | ST x ->
-     let s, env = (env#global x)#pop in
-     env, [Mov (s, eax); Mov (eax, M (env#loc x))]
-  | BINOP op ->
-     let x, y, env = env#pop2 in
-     let res, env = env#allocate in
-     env, compile_binop op x y res
-  | LABEL l -> env, [Label l]
-  | JMP l -> env, [Jmp l]
-  | CJMP (b, l) ->
-     let s, env = env#pop in
-     env, [Binop ("cmp", L 0, s); CJmp (b, l)]
-
-let rec compile env = function
-  | [] -> env, []
-  | insn :: code ->
-     let (env, asm_instr) = compile_intruction insn env in
-     let (res_env, res_asm_instr) = compile env code in
-     res_env, asm_instr @ res_asm_instr
+ let rec compile env = function
+  | []             -> env, []
+  | instr :: code' ->
+    let env, asm =
+      match instr with
+      | CONST n  ->
+        let s, env = env#allocate in
+        env, [Mov (L n, s)]
+      | READ     -> let s, env = env#allocate in env, [Call "Lread"; Mov (eax, s)]
+      | WRITE    -> let s, env = env#pop in env, [Push s; Call "Lwrite"; Pop eax]
+      | LD x     -> let s, env = (env#global x)#allocate in env, [Mov (M ("global_" ^ x), eax); Mov (eax, s)]
+      | ST x     -> let s, env = (env#global x)#pop in env, [Mov (s, eax); Mov (eax, M ("global_" ^ x))]
+      | BINOP op -> (
+        let y, x, env = env#pop2 in
+        let s, env = env#allocate in
+        match op with
+        | "+" | "-" | "*" -> env, [Mov (x, eax); Binop (op, y, eax); Mov (eax, s)]
+        | "/"             -> env, [Mov (x, eax); Cltd; IDiv y; Mov (eax, s)]
+        | "%"             -> env, [Mov (x, eax); Cltd; IDiv y; Mov (edx, s)]
+        | "<" | "<=" | ">" | ">=" | "==" | "!=" -> env, [
+                                                     Mov (x, edx);
+                                                     Binop ("^", eax, eax);
+                                                     Binop ("cmp", y, edx);
+                                                     Set (cmpOpToAsm op, "%al");
+                                                     Mov (eax, s)
+                                                   ]
+        | "!!" | "&&" -> env, [
+                           Binop ("^", eax, eax);
+                           Binop ("^", edx, edx);
+                           Binop ("cmp", L 0, x);
+                           Set ("ne", "%al");
+                           Binop ("cmp", L 0, y);
+                           Set ("ne", "%dl");
+                           Binop (op, eax, edx);
+                           Mov (edx, s)
+                         ])
+      | LABEL l  -> env, [Label l]
+      | JMP l    -> env, [Jmp l]
+      | CJMP (znz, l) -> let h, env = env#pop in env, [Binop ("cmp", L 0, h); CJmp (znz, l)]
+    in
+    let env, asm' = compile env code' in
+    env, asm @ asm'
 
 (* A set of strings *)
 module S = Set.Make (String)
