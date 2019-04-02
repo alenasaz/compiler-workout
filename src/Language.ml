@@ -219,7 +219,7 @@ module Stmt =
         | "return" e:!(Expr.parse)? { Return e };
       
       parse:
-          l:line ";" rest:parse {Seq (l, rest)} | line;
+          l:line ";" rest:parse {Seq (l, rest)} | line
 
     )
       
