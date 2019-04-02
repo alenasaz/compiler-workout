@@ -99,6 +99,9 @@ let label_generator =
   | Expr.Var   x          -> [LD x]
   | Expr.Const n          -> [CONST n]
   | Expr.Binop (op, x, y) -> expr x @ expr y @ [BINOP op]
+  | Expr.Call (f, args)   ->
+    let compile_args = List.concat (List.map (expr) (List.rev args)) in
+    compile_args @ [CALL (f, List.length args, true)]
   in match p with
   | Stmt.Seq (s1, s2)  -> (let newLabel = label_generator#get in
                            let (compiled1, used1) = compileWithLabels s1 newLabel in
