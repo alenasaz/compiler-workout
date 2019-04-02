@@ -50,7 +50,7 @@ let rec eval env ((cst, st, ((s, i, o) as c)) as conf) prg =
       let b = if z = "z" then (List.hd st) == 0 else (List.hd st) != 0 in
       if b then eval env (cst, List.tl st, (s, i, o)) (env#labeled l) else eval env (cst, List.tl st, (s, i, o)) p
   | BEGIN (_,a, l) :: p ->
-      let state = Language.State.push_scope s (a @ l) in
+      let state = Language.State.enter s (a @ l) in
       let s, st = List.fold_left (fun (s, x::stack) name -> (State.update name x s, stack)) (state, st) a in
       eval env (cst, st, (s, i, o)) p
   | CALL (f,_,_)   :: p -> eval env ((p, s)::cst, st, (s, i, o)) (env#labeled f)
@@ -124,8 +124,12 @@ let label_generator =
     let (repeatBody, _) = compileWithLabels body lastL in
     ([LABEL lLoop] @ repeatBody @ expr e @ [CJMP ("z", lLoop)]), false
   | Stmt.Skip -> [], false
-   | Stmt.Call (f, args) ->
+  | Stmt.Call (f, args) ->
     List.concat (List.map (expr) (List.rev args)) @ [CALL f], false
+  | Stmt.Return e       -> (match e with
+                            | Some x -> (expr x) @ [RET true]
+                            | _ -> [RET false]), false
+
 
 let rec compile_main p =
     let l = label#get "l_main" in
