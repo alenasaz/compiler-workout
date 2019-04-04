@@ -29,47 +29,36 @@ type config = int list * Stmt.config
    Takes an environment, a configuration and a program, and returns a configuration as a result. The
    environment is used to locate a label to jump to (via method env#labeled <label_name>)
 *)                         
-let rec eval env ((stack, ((st, i, o) as c)) as conf) = function
-  | [] -> conf
-  | inst :: prog_tail ->
-       match inst with
-       | BINOP op ->
-          begin
-            match stack with
-            | y :: x :: tail ->
-               eval env ((Expr.get_oper op x y) :: tail, c) prog_tail
-            | _ -> failwith "cannot perform BINOP"
-          end
-       | CONST v -> eval env (v :: stack, c) prog_tail
-       | READ ->
-          begin
-            match i with
-            | x :: tail -> eval env (x :: stack, (st, tail, o)) prog_tail
-            | _ -> failwith "cannot perform READ"
-          end
-       | WRITE ->
-          begin
-            match stack with
-            | x :: tail -> eval env (tail, (st, i, o @ [x])) prog_tail
-            | _ -> failwith "cannot perform WRITE"
-          end
-       | LD x -> eval env ((st x) :: stack, c) prog_tail
-       | ST x ->
-          begin
-            match stack with
-            | z :: tail -> eval env (tail, ((Expr.update x z st), i, o)) prog_tail
-            | _ -> failwith "cannot perform ST"
-          end
-       | LABEL l -> eval env conf prog_tail
-       | JMP l -> eval env conf (env#labeled l)
-       | CJMP (b, l) ->
-          begin
-            match stack with
-            | x :: tail -> if (x = 0 && b = "z" || x != 0 && b = "nz")
-                           then eval env (tail, c) (env#labeled l)
-                           else eval env (tail, c) prog_tail
-            | _ -> failwith "stack is empty"
-          end
+let instrEval (stack, (s, i, o)) instruction = match instruction with
+  | BINOP op -> (match stack with
+    | y :: x :: tail -> ((Language.Expr.binopEval op x y) :: tail, (s, i, o))
+    | _              -> failwith "Not enough elements in stack")
+  | CONST z  -> (z :: stack, (s, i, o))
+  | READ     -> (match i with
+    | z :: tail -> (z :: stack, (s, tail, o))
+    | _         -> failwith "Not enough elements in input")
+  | WRITE    -> (match stack with
+    | z :: tail -> (tail, (s, i, o @ [z]))
+    | _         -> failwith "Not enough elements in stack")
+  | LD x     -> ((s x) :: stack, (s, i, o))
+  | ST x     -> (match stack with
+    | z :: tail -> (tail, (Language.Expr.update x z s, i, o))
+    | _         -> failwith "Not enough elements in stack")
+  | LABEL l  ->  (stack, (s, i, o))
+
+let rec eval env cfg p = match p with
+  | instr::tail -> (match instr with
+    | LABEL l        -> eval env cfg tail
+    | JMP l          -> eval env cfg (env#labeled l)
+    | CJMP (znz, l)  -> (let (st, rem) = cfg in match znz with
+                          | "z"  -> (match st with
+                                    | z::st' -> if z <> 0 then (eval env (st', rem) tail) else (eval env (st', rem) (env#labeled l))
+                                    | []     -> failwith "CJMP with empty stack")
+                          | "nz" -> (match st with
+                                    | z::st' -> if z <> 0 then (eval env (st', rem) (env#labeled l)) else (eval env (st', rem) tail)
+                                    | []     -> failwith "CJMP with empty stack"))
+    | _              -> eval env (instrEval cfg instr) tail)
+  | []          -> cfg
 
 (* Top-level evaluation
 
