@@ -83,13 +83,6 @@ let show instr =
 (* Opening stack machine to use instructions without fully qualified names *)
 open SM
 
-(* Symbolic stack machine evaluator
-
-     compile : env -> prg -> env * instr list
-
-   Take an environment, a stack machine program, and returns a pair --- the updated environment and the list
-   of x86 instructions
-*)
 let rec compile_binop env op =
     let set_zero operand = Binop("^", operand, operand) in
     let compare_op op = (match op with
@@ -115,6 +108,12 @@ let rec compile_binop env op =
                                 Set ("nz", "%al"); Binop("cmp", L 0, r); Set ("nz", "%dl");
                                 Binop (op, edx, eax); Mov (eax, s)]
     in env, asm
+
+(* Symbolic stack machine evaluator
+     compile : env -> prg -> env * instr list
+   Take an environment, a stack machine program, and returns a pair --- the updated environment and the list
+   of x86 instructions
+*)
 
 let rec init_impl n = if n < 0 then [] else n :: init_impl (n - 1)
 let list_init n = List.rev (init_impl (n - 1))
@@ -161,13 +160,14 @@ let rec compile env = function
             ) in
         let env, asm_code = compile env code in
         env, (asm_instr @ asm_code)
-                                
-(* A set of strings *)           
+
+
+(* A set of strings *)
 module S = Set.Make (String)
 
 (* Environment implementation *)
-let make_assoc l = List.combine l (List.init (List.length l) (fun x -> x))
-                     
+let make_assoc l = List.combine l (list_init (List.length l))
+
 class env =
   object (self)
     val globals     = S.empty (* a set of global variables         *)
