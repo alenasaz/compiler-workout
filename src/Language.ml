@@ -75,8 +75,6 @@ module Expr =
          DECIMAL --- a decimal constant [0-9]+ as a string
                                                                                                                   
     *)
-    let create_binop op = fun x y -> Binop(op, x, y)
-    let parse_op_list ops = List.map (fun op -> ostap ($(op)), create_binop op) ops
 
     ostap (
       expr:
