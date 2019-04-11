@@ -50,12 +50,7 @@ let insn_string = function
 let print_program prg = 
 List.fold_left (fun _ insn -> Printf.printf "%s;\n" (insn_string insn)) () prg;
 Printf.printf "\n"
-let split n l =
-  let rec unzip (taken, rest) = function
-  | 0 -> (List.rev taken, rest)
-  | n -> let h::tl = rest in unzip (h::taken, tl) (n-1)
-  in
-  unzip ([], l) n
+
   
   let rec print_stack = function
 | [] -> Printf.printf "\n"
