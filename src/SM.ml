@@ -25,13 +25,6 @@ type prg = insn list
 *)
 type config = (prg * State.t) list * Value.t list * Expr.config
 
-(* Stack machine interpreter
-
-     val eval : env -> config -> prg -> config
-
-   Takes an environment, a configuration and a program, and returns a configuration as a result. The
-   environment is used to locate a label to jump to (via method env#labeled <label_name>)
-*)
 let insn_string = function
 | BINOP op  -> Printf.sprintf "BINOP %s" op
 | CONST c   -> Printf.sprintf "CONST %d" c
@@ -51,8 +44,7 @@ let print_program prg =
 List.fold_left (fun _ insn -> Printf.printf "%s;\n" (insn_string insn)) () prg;
 Printf.printf "\n"
 
-  
-  let rec print_stack = function
+let rec print_stack = function
 | [] -> Printf.printf "\n"
 | z::stack' -> 
   match z with
@@ -60,7 +52,12 @@ Printf.printf "\n"
   | Value.String s -> Printf.printf "%s; " s;
   | Value.Array _ -> Printf.printf "array...; ";
   print_stack stack'
-        
+
+(* Stack machine interpreter
+     val eval : env -> config -> prg -> config
+   Takes an environment, a configuration and a program, and returns a configuration as a result. The
+   environment is used to locate a label to jump to (via method env#labeled <label_name>)
+*)
 let split n l =
   let rec unzip (taken, rest) = function
   | 0 -> (List.rev taken, rest)
@@ -113,14 +110,12 @@ let rec eval env ((cstack, stack, ((st, i, o) as c)) as conf) = function
       | _                 -> prg'
    )
 
-
 (* Top-level evaluation
-
      val run : prg -> int list -> int list
-
    Takes a program, an input stream, and returns an output stream this program calculates
 *)
 let run p i =
+  (* print_program p (* DEBUG *)*)
   let module M = Map.Make (String) in
   let rec make_map m = function
   | []              -> m
@@ -137,7 +132,7 @@ let run p i =
            let f = match f.[0] with 'L' -> String.sub f 1 (String.length f - 1) | _ -> f in
            let args, stack' = split n stack in
            let (st, i, o, r) = Language.Builtin.eval (st, i, o, None) (List.rev args) f in
-           let stack'' = if p then stack' else let Some r = r in r::stack' in
+           let stack'' = if (not p) then stack' else let Some r = r in r::stack' in
            Printf.printf "Builtin: %s\n";
            (cstack, stack'', (st, i, o))
        end
@@ -148,9 +143,7 @@ let run p i =
   o
 
 (* Stack machine compiler
-
      val compile : Language.t -> prg
-
    Takes a program in the source language and returns an equivalent program for the
    stack machine
 *)

@@ -7,6 +7,10 @@ open GT
 open Ostap
 open Combinators
 
+let default x opt = match opt with
+        | Some v -> v
+        | None   -> x
+
 (* Values *)
 module Value =
   struct
@@ -32,7 +36,7 @@ module Value =
     let rec list_init i n f = if i >= n then [] else (f i) :: (list_init (i + 1) n f) 
 
     let update_string s i x = String.init (String.length s) (fun j -> if j = i then x else s.[j])
-    let update_array  a i x = List.init   (List.length a)   (fun j -> if j = i then x else List.nth a j)
+    let update_array  a i x = list_init 0 (List.length a)   (fun j -> if j = i then x else List.nth a j)
 
   end
        
@@ -136,19 +140,13 @@ module Expr =
       | _    -> failwith (Printf.sprintf "Unknown binary operator %s" op) 
                                                             
     (* Expression evaluator
-
           val eval : env -> config -> t -> int * config
-
-
        Takes an environment, a configuration and an expresion, and returns another configuration. The 
        environment supplies the following method
-
            method definition : env -> string -> int list -> config -> config
-
        which takes an environment (of the same type), a name of the function, a list of actual parameters and a configuration, 
        an returns a pair: the return value for the call and the resulting configuration
-    *) 
-
+    *)                                                       
     let rec eval env ((st, i, o, r) as conf) expr =      
       (match expr with
       | Const n  -> (st, i, o, Some (Value.of_int n))
@@ -170,7 +168,6 @@ module Expr =
                             (st, i, o, Some (match v with
                                 | Value.Array list -> Value.of_int @@ List.length list
                                 | Value.String s -> Value.of_int @@ String.length s)))
-
     and eval_list env conf xs =
       let vs, (st, i, o, _) =
         List.fold_left
@@ -184,11 +181,10 @@ module Expr =
       (st, i, o, List.rev vs)
          
     (* Expression parser. You can use the following terminals:
-
          IDENT   --- a non-empty identifier a-zA-Z[a-zA-Z0-9_]* as a string
          DECIMAL --- a decimal constant [0-9]+ as a string                                                                                                                  
     *)
-     ostap (                                      
+    ostap (                                      
       parse:
       !(Ostap.Util.expr 
              (fun x -> x)
@@ -219,7 +215,6 @@ module Expr =
       | x:IDENT p:("(" params:!(Util.list0 parse) ")" {Call (x, params)} | empty {Var x}) {p}
       | -"(" parse -")"
     )
-
     
   end
                     
@@ -239,9 +234,7 @@ module Stmt =
     (* call a procedure                 *) | Call   of string * Expr.t list
                                                                     
     (* Statement evaluator
-
          val eval : env -> config -> t -> config
-
        Takes an environment, a configuration and a statement, and returns another configuration. The 
        environment is the same as for expressions
     *)
@@ -258,7 +251,7 @@ module Stmt =
       in
       State.update x (match is with [] -> v | _ -> update (State.eval st x) v is) st
           
- let rec eval env ((st, i, o, r) as conf) k stmt =
+    let rec eval env ((st, i, o, r) as conf) k stmt =
       let (<*>) a b = match a, b with
           | Skip, s -> s
           | s, Skip -> s
@@ -289,7 +282,7 @@ module Stmt =
 (* Return *)                                  | Some e -> Expr.eval env conf e
          
     (* Statement parser *)
-     ostap (
+    ostap (
       parse:
         s:stmt ";" ss:parse {Seq (s, ss)}
       | stmt;
@@ -313,7 +306,7 @@ module Stmt =
       | x:IDENT idx:(-"[" !(Expr.parse) -"]")* ":=" e:!(Expr.parse)    {Assign (x, idx, e)}
       | name:IDENT "(" params:(!(Util.list)[ostap (!(Expr.parse))])? ")" {Call (name, default [] params)}
     )
-    
+      
   end
 
 (* Function and procedure definitions *)
@@ -340,9 +333,7 @@ module Definition =
 type t = Definition.t list * Stmt.t    
 
 (* Top-level evaluator
-
      eval : t -> int list -> int list
-
    Takes a program and its input stream, and returns the output stream
 *)
 let eval (defs, body) i =

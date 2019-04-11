@@ -84,9 +84,7 @@ let show instr =
 open SM
 
 (* Symbolic stack machine evaluator
-
      compile : env -> prg -> env * instr list
-
    Take an environment, a stack machine program, and returns a pair --- the updated environment and the list
    of x86 instructions
 *)
@@ -98,7 +96,7 @@ let compile env code =
   | "!=" -> "ne"
   | ">=" -> "ge"
   | ">"  -> "g"
-  | _    -> failwith "unknown operator"	
+  | _    -> failwith "Unexpected operator" 
   in
   let rec compile' env scode =
     let on_stack = function S _ -> true | _ -> false
@@ -212,7 +210,6 @@ let compile env code =
   in
   compile' env code
 
-
 (* A set of strings *)           
 module S = Set.Make (String)
 
@@ -224,7 +221,7 @@ let rec list_init_helper i acc len f =
 let list_init len f = list_init_helper 0 [] len f
 
 (* Environment implementation *)
-let make_assoc l = List.combine l (List.init (List.length l) (fun x -> x))
+let make_assoc l = List.combine l (list_init (List.length l) (fun x -> x))
                      
 class env =
   object (self)
@@ -244,14 +241,14 @@ class env =
     (* allocates a fresh position on a symbolic stack *)
     method allocate =    
       let x, n =
-        let rec allocate' = function
-        | []                            -> R 0     , 0
-        | (S n)::_                      -> S (n+1) , n+2
-        | (R n)::_ when n < num_of_regs -> R (n+1) , stack_slots
+	let rec allocate' = function
+	| []                            -> ebx     , 0
+	| (S n)::_                      -> S (n+1) , n+2
+	| (R n)::_ when n+1 < num_of_regs -> R (n+1) , stack_slots
         | (M _)::s                      -> allocate' s
-        | _                             -> let n = List.length locals in S n, n+1
-        in
-        allocate' stack
+	| _                             -> S 0     , 1
+	in
+	allocate' stack
       in
       x, {< stack_slots = max n stack_slots; stack = x::stack >}
 
@@ -313,4 +310,3 @@ let build prog name =
   close_out outf;
   let inc = try Sys.getenv "RC_RUNTIME" with _ -> "../runtime" in
   Sys.command (Printf.sprintf "gcc -m32 -o %s %s/runtime.o %s.s" name inc name)
- 
